@@ -1,0 +1,97 @@
+<section class="auth-content" [class.signup-content]="mode === 'signup'" aria-labelledby="page-heading">
+  @if (mode === 'login' || mode === 'signup') {
+    <nav class="auth-tabs" aria-label="Account access">
+      <a routerLink="/login" [class.active]="mode === 'login'" [attr.aria-current]="mode === 'login' ? 'page' : null">Sign in</a>
+      <a routerLink="/signup" [class.active]="mode === 'signup'" [attr.aria-current]="mode === 'signup' ? 'page' : null">Create account</a>
+    </nav>
+  } @else {
+    <a routerLink="/login" class="back-link"><span aria-hidden="true">←</span> Back to sign in</a>
+  }
+
+  <div class="page-intro">
+    <span class="eyebrow">{{ copy.eyebrow }}</span>
+    <h2 id="page-heading">{{ copy.title }}</h2>
+    <p>{{ copy.description }}</p>
+  </div>
+
+  @if (success()) {
+    <div class="result-panel" role="status">
+      <span class="result-icon" aria-hidden="true">✓</span>
+      <h3>{{ mode === 'signup' || mode === 'forgot' ? 'Check your inbox' : 'You’re all set' }}</h3>
+      <p>{{ success() }}</p>
+      @if (mode === 'signup' || mode === 'forgot') { <p class="small text-secondary">Can’t find it? Check your spam or junk folder.</p> }
+      <a routerLink="/login" class="btn btn-primary w-100">Return to sign in <span aria-hidden="true">→</span></a>
+    </div>
+  } @else if (missingLink) {
+    <div class="alert alert-warning" role="alert">This link is incomplete. Please open the full link from your email.</div>
+    @if (mode === 'reset') { <a routerLink="/forgot-password" class="btn btn-primary w-100">Request a new reset link</a> }
+    @else { <p class="text-secondary">Use the verification email sent when you created your account.</p> }
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="busy()">
+      @if (errorSummary().length) {
+        <div class="alert alert-danger" role="alert">
+          @for (message of errorSummary(); track $index) { <p class="mb-1">{{ message }}</p> }
+          @if (mode === 'role') { <a routerLink="/login" class="alert-link">Sign in again</a> }
+          @if (mode === 'reset') { <a routerLink="/forgot-password" class="alert-link">Request a new reset link</a> }
+        </div>
+      }
+      <fieldset [disabled]="busy()">
+        <legend class="visually-hidden">{{ copy.title }}</legend>
+        @if (mode === 'signup' || mode === 'role') {
+          <fieldset class="role-selector mb-4" [attr.aria-describedby]="fieldError('role') ? 'role-error' : null">
+            <legend class="form-label">{{ mode === 'signup' ? 'I’m joining as a' : 'Choose your role' }}</legend>
+            <div class="row g-3">
+              @for (role of roles; track role) {
+                <div class="col-6">
+                  <label class="role-card" [class.selected]="form.get('role')?.value === role">
+                    <input type="radio" name="role" formControlName="role" [value]="role" [attr.aria-invalid]="!!fieldError('role')">
+                    <span class="role-symbol" aria-hidden="true">{{ role === 'owner' ? '⌂' : '▤' }}</span>
+                    <strong>{{ role === 'owner' ? 'Property owner' : 'Tenant' }}</strong>
+                    <small>{{ role === 'owner' ? 'A place to call theirs' : 'A place to call home' }}</small>
+                  </label>
+                </div>
+              }
+            </div>
+            @if (fieldError('role')) { <div class="invalid-feedback d-block" id="role-error">{{ fieldError('role') }}</div> }
+          </fieldset>
+        }
+        @if (mode === 'role') { <p class="small text-secondary">For your security, this selection expires after two minutes.</p> }
+        @if (mode === 'verify') {
+          <div class="verification-note"><span class="result-icon" aria-hidden="true">@</span><p>Click below to confirm that this email belongs to you.</p></div>
+        }
+        <div class="row g-3">
+          @for (field of fields; track field.key) {
+            <div [class]="field.half ? 'col-sm-6' : 'col-12'">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0" [for]="field.key">{{ field.label }} @if (field.optional) { <span class="optional">(optional)</span> }</label>
+                @if (mode === 'login' && field.key === 'password') { <a routerLink="/forgot-password" class="small-link">Forgot password?</a> }
+              </div>
+              <div class="input-wrap">
+                <input class="form-control" [class.is-invalid]="!!fieldError(field.key)" [id]="field.key" [formControlName]="field.key"
+                  [type]="field.type === 'password' && showPassword() ? 'text' : field.type" [autocomplete]="field.autocomplete"
+                  [placeholder]="field.placeholder" [attr.maxlength]="field.max ?? null" [attr.max]="field.type === 'date' ? today : null"
+                  [attr.required]="field.optional ? null : ''" [attr.aria-invalid]="!!fieldError(field.key)"
+                  [attr.aria-describedby]="fieldError(field.key) ? field.key + '-error' : (field.type === 'password' && mode !== 'login' ? 'password-hint' : null)">
+                @if (field.type === 'password') {
+                  <button type="button" class="password-toggle" (click)="showPassword.set(!showPassword())" [attr.aria-label]="(showPassword() ? 'Hide ' : 'Show ') + field.label.toLowerCase()" [attr.aria-pressed]="showPassword()">{{ showPassword() ? 'Hide' : 'Show' }}</button>
+                }
+              </div>
+              @if (fieldError(field.key)) { <div class="invalid-feedback d-block" [id]="field.key + '-error'" role="alert">{{ fieldError(field.key) }}</div> }
+            </div>
+          }
+        </div>
+        @if (mode === 'signup' || mode === 'reset') { <p class="password-hint" id="password-hint">Use at least 8 characters. Avoid common passwords and personal details.</p> }
+        <button type="submit" class="btn btn-primary submit-button w-100" [disabled]="busy()">
+          @if (busy()) { <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span> Please wait… }
+          @else { {{ copy.action }} <span aria-hidden="true">→</span> }
+        </button>
+      </fieldset>
+    </form>
+    @if (mode === 'login') {
+      <div class="divider"><span>New around here?</span></div>
+      <a routerLink="/signup" class="btn btn-outline-secondary w-100">Create your Rental Score account</a>
+      <div class="quiet-note"><span aria-hidden="true">◇</span> A fresh start for owners and tenants.</div>
+    }
+    @if (mode === 'signup') { <p class="text-center small mt-4 text-secondary">Already have an account? <a routerLink="/login">Sign in</a></p> }
+  }
+</section>
